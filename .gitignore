@@ -1,0 +1,7 @@
+.venv.cover.me
+.idea
+coverme/config.ini
+coverme/config.yml
+
+*.pyc
+__pycache__
