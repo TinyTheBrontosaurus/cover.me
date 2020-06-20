@@ -78,6 +78,23 @@ def main(argv):
                                 "bid", "last_stock", "strike", "expiration_date"
                                 ]].sort_values('net_premium_adj_apr', ascending=False)
 
+    df_output['net_premium_adj_apr'] = df_output['net_premium_adj_apr'].map(lambda x: f"{x:5.1f}%")
+    df_output['net_premium_per_contract'] = df_output['net_premium_per_contract'].map(lambda x: f"${x:.2f}")
+    df_output['commitment_value_per_contract'] = df_output['commitment_value_per_contract'].map(lambda x: f"${x:.2f}")
+    df_output['commitment_period'] = df_output['commitment_period'].map(lambda x: f"{x.days} days")
+    df_output['bid'] = df_output['bid'].map(lambda x: f"${x:.2f}")
+    df_output['last_stock'] = df_output['last_stock'].map(lambda x: f"${x:.2f}")
+    df_output['strike'] = df_output['strike'].map(lambda x: f"${x:.2f}")
+
+    df_output = df_output.rename(columns={'net_premium_adj_apr': "APR",
+                                          "net_premium_per_contract": "Premium /\n contract",
+                                          "commitment_value_per_contract": "Commitment /\n contract",
+                                          "commitment_period": "Expiry\nperiod",
+                                          "last_stock": "Stock\nprice",
+                                          "strike": "Strike\nprice",
+                                          "expiration_date": "Expiry"
+                                          })
+
     for symbol in symbols:
         where = (df_output["symbol"] == symbol)
         print(tabulate.tabulate(df_output[where], headers='keys', tablefmt='psql'))
