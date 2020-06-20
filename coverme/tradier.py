@@ -2,22 +2,23 @@ import requests
 from requests.adapters import HTTPAdapter
 
 import argparse
-import configparser
+from coverme.log_folder import LogFolder
 import pathlib
 import confuse
 import coverme
 from coverme.config import coverme_config
 from loguru import logger
+from coverme import definitions
+from coverme.version import __version__
+import shutil
 
-
-ROOT_DIR = pathlib.Path(__file__).parent.parent
 
 template = {}
 
 def main(argv):
     parser = argparse.ArgumentParser(description="Tool for covered calls")
     parser.add_argument('--config', '-c', help='App config.', type=pathlib.Path,
-                        default=ROOT_DIR / "coverme" / "config.yml")
+                        default=definitions.CONFIG_DIR / "config.yml")
     parser.add_argument("--cache", dest="use_cache", action="store_true",
                         help="Force to use locally cached data")
     args = parser.parse_args(argv)
@@ -42,6 +43,34 @@ def main(argv):
 
     # Cache old log path
     coverme.config.log_name = coverme_config['name'].get()
+
+    try:
+        LogFolder.get_latest_log_folder(definitions.LOG_DIR / coverme_config.config.log_name)
+    except FileNotFoundError:
+        pass
+
+    # Create log path
+    LogFolder.set_path(definitions.LOG_DIR, coverme_config.config.log_name)
+
+    # Initialize logger
+    logger.add(LogFolder.folder / "event.log", level="INFO")
+    logger.info("Running program: {}", coverme_config['name'].get())
+    logger.info("Version: {}", __version__)
+    logger.info("Log folder: {}", LogFolder.folder)
+
+    # Don't lost to stderr anymore
+    logger.remove(0)
+
+    # Copy configs
+    # Straight copy
+    orig_config = pathlib.Path(args.config)
+    shutil.copyfile(str(orig_config), str(LogFolder.folder / orig_config.name))
+    logger.info("CLI args: {}", argv)
+
+    # Copy resulting config
+    with open(LogFolder.folder / "config.yml", 'w') as f:
+        f.write(coverme_config.dump())
+
 
     # Read config
     session = open_session(
