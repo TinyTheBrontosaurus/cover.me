@@ -1,6 +1,6 @@
 import sys
-from coverme import tradier
+from coverme import main
 
 
 if "__main__" == __name__:
-    tradier.main(sys.argv[1:])
+    main.main(sys.argv[1:])
