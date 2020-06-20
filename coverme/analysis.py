@@ -137,7 +137,9 @@ class Analysis:
                 (rowi != df_output.index),
                 'worse_premium_expiry'] = rowi
 
-            # For a fixed APR (with 1%), an option with a sooner expiry date and a >= strike price is possibly better
+            # For a fixed APR (with 1%), an option with a sooner expiry date and a >= strike price is possibly better.
+            # ... In further thought it's more of a judgement call. Longer expiry to take advantage of a higher APR for
+            # longer
             df_output.loc[
                 (row['expiration_date'] <= df_output['expiration_date']) &
                 ((row['net_premium_adj_apr'] - df_output["net_premium_adj_apr"]).abs() < 1) &

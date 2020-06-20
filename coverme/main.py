@@ -81,18 +81,26 @@ def main(argv):
         ]].sort_values('net_premium_adj_apr', ascending=False)
     def omitter(row):
         filtered = row.values[row.values != np.array(None)]
-        #filtered = np.unique(filtered)
-        return str(next(filtered.tolist().__iter__(), ''))#','.join(str(x) if x is not None else None for x in filtered)
+        filtered = np.unique(filtered).tolist()
+        if len(filtered) == 0:
+            return ''
+        else:
+            return ', '.join([str(x) for x in filtered])
 
-    df_output['omit'] = df_apr[["worse_apr_strike", "worse_premium_expiry", "worse_strike_expiry"]].apply(
+    df_output['omit'] = df_apr[[
+        # Kept as separate lines to they are easy to add/remove
+        "worse_apr_strike",
+        "worse_premium_expiry",
+        #"worse_strike_expiry"
+    ]].apply(
         omitter,
         axis=1
     )
-    df_output['omit']
 
     # Remove anything with an APR under 7%
     df_output = df_output[df_output["net_premium_adj_apr"] > 7]
-
+    # Remove anything marked to omit
+    df_output = df_output[df_output["omit"] == '']
 
     # Fix units for printing
     df_output['net_premium_adj_apr'] = df_output['net_premium_adj_apr'].map(lambda x: f"{x:5.1f}%")
