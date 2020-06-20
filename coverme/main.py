@@ -78,6 +78,7 @@ def main(argv):
                                 "bid", "last_stock", "strike", "expiration_date"
                                 ]].sort_values('net_premium_adj_apr', ascending=False)
 
+    # Fix units for printing
     df_output['net_premium_adj_apr'] = df_output['net_premium_adj_apr'].map(lambda x: f"{x:5.1f}%")
     df_output['net_premium_per_contract'] = df_output['net_premium_per_contract'].map(lambda x: f"${x:.2f}")
     df_output['commitment_value_per_contract'] = df_output['commitment_value_per_contract'].map(lambda x: f"${x:.2f}")
@@ -86,6 +87,7 @@ def main(argv):
     df_output['last_stock'] = df_output['last_stock'].map(lambda x: f"${x:.2f}")
     df_output['strike'] = df_output['strike'].map(lambda x: f"${x:.2f}")
 
+    # Rename for printing
     df_output = df_output.rename(columns={'net_premium_adj_apr': "APR",
                                           "net_premium_per_contract": "Premium /\n contract",
                                           "commitment_value_per_contract": "Commitment /\n contract",
