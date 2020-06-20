@@ -97,11 +97,21 @@ def main(argv):
         for symbol in symbols
     }
 
-    # Load expirations
+    # Load option expirations
     expirations = {
         symbol: cache.load("expiration", market_api.options_expirations, (symbol,))
         for symbol in symbols
     }
+
+    # Load option chains
+    option_chains = {
+        symbol: {
+            expiration: cache.load("optionchains", market_api.option_chain, (symbol, expiration))
+            for expiration in expirations[symbol]['expirations']['date']
+        }
+        for symbol in symbols
+    }
+
     logger.info(f"Cache: {cache.hits} hits, {cache.misses} misses")
 
     # Load option chains
