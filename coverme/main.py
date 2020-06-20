@@ -1,8 +1,7 @@
 import argparse
-import datetime
 
 from loguru import logger
-import pandas as pd
+import numpy as np
 import tabulate
 
 from . import definitions
@@ -73,13 +72,23 @@ def main(argv):
     anaysis = Analysis(quotes, expirations, option_chains)
 
     # Print
-    # Filter and order columns for pinting
-    df_output = anaysis.df_apr_objective_omit[
+    # Filter and order columns for printing
+    df_apr = anaysis.df_apr_objective_omit
+    df_output = df_apr[
         ["symbol", "net_premium_adj_apr", "net_premium_per_contract",
          "commitment_value_per_contract", "commitment_period",
          "bid", "last_stock", "strike", "expiration_date",
-         "worse_apr_strike", "worse_premium_expiry"
         ]].sort_values('net_premium_adj_apr', ascending=False)
+    def omitter(row):
+        filtered = row.values[row.values != np.array(None)]
+        #filtered = np.unique(filtered)
+        return str(next(filtered.tolist().__iter__(), ''))#','.join(str(x) if x is not None else None for x in filtered)
+
+    df_output['omit'] = df_apr[["worse_apr_strike", "worse_premium_expiry", "worse_strike_expiry"]].apply(
+        omitter,
+        axis=1
+    )
+    df_output['omit']
 
     # Remove anything with an APR under 7%
     df_output = df_output[df_output["net_premium_adj_apr"] > 7]

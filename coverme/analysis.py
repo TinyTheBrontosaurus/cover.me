@@ -111,6 +111,7 @@ class Analysis:
         # Add some rules for good deals that are objectively beaten
         df_output["worse_apr_strike"] = None
         df_output["worse_premium_expiry"] = None
+        df_output["worse_strike_expiry"] = None
 
         for rowi, row in df_output.iterrows():
             # For a fixed expiry date, an option with both a greater APR and and greater strike price is objectively better
@@ -136,6 +137,15 @@ class Analysis:
                 (rowi != df_output.index),
                 'worse_premium_expiry'] = rowi
 
-            # For a fixed APR, an option with a sooner expiry date and a >= strike price is objectively better
+            # For a fixed APR (with 1%), an option with a sooner expiry date and a >= strike price is possibly better
+            df_output.loc[
+                (row['expiration_date'] <= df_output['expiration_date']) &
+                ((row['net_premium_adj_apr'] - df_output["net_premium_adj_apr"]).abs() < 1) &
+                (row['strike'] >= df_output["strike"]) &
+                # Needs to be the same symbol
+                (row['symbol'] == df_output['symbol']) &
+                # Don't check itself
+                (rowi != df_output.index),
+                'worse_strike_expiry'] = rowi
 
         return df_output
