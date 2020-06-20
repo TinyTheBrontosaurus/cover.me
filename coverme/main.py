@@ -74,34 +74,16 @@ def main(argv):
 
     # Print
     # Filter and order columns for pinting
-    df_output = anaysis.df_apr[["symbol", "net_premium_adj_apr", "net_premium_per_contract",
-                                "commitment_value_per_contract", "commitment_period",
-                                "bid", "last_stock", "strike", "expiration_date"
-                                ]].sort_values('net_premium_adj_apr', ascending=False)
+    df_output = anaysis.df_apr_objective_omit[
+        ["symbol", "net_premium_adj_apr", "net_premium_per_contract",
+         "commitment_value_per_contract", "commitment_period",
+         "bid", "last_stock", "strike", "expiration_date",
+         "worse_apr_strike", "worse_premium_expiry"
+        ]].sort_values('net_premium_adj_apr', ascending=False)
 
     # Remove anything with an APR under 7%
     df_output = df_output[df_output["net_premium_adj_apr"] > 7]
 
-    # Add some rules for good deals that are objectively beaten
-    df_output["worse_apr_strike"] = None
-
-    for rowi, row in df_output.iterrows():
-
-        # For a fixed expiry date, an option with both a greater APR and and greater strike price is objectively better
-        df_output.loc[
-            (row['expiration_date'] == df_output['expiration_date']) &
-            (row['net_premium_adj_apr'] >= df_output["net_premium_adj_apr"]) &
-            (row['strike'] >= df_output["strike"]) &
-            # Needs to be the same symbol
-            (row['symbol'] == df_output['symbol']) &
-            # Don't check itself
-            (rowi != df_output.index),
-            'worse_apr_strike'] = rowi
-
-        # For a fixed strike price, an option with both a great premium / contract and a sooner expiry date is
-        # objectively better
-
-        # For a fixed APR, an option with a sooner expiry date and a >= strike price is objectively better
 
     # Fix units for printing
     df_output['net_premium_adj_apr'] = df_output['net_premium_adj_apr'].map(lambda x: f"{x:5.1f}%")

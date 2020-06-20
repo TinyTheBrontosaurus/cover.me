@@ -102,3 +102,40 @@ class Analysis:
         df_apr["commitment_value_per_contract"] = df_apr["last_stock"] * SHARES_PER_CONTRACT
 
         return df_apr
+
+    @property
+    def df_apr_objective_omit(self) -> pd.DataFrame:
+
+        df_output = self.df_apr
+
+        # Add some rules for good deals that are objectively beaten
+        df_output["worse_apr_strike"] = None
+        df_output["worse_premium_expiry"] = None
+
+        for rowi, row in df_output.iterrows():
+            # For a fixed expiry date, an option with both a greater APR and and greater strike price is objectively better
+            df_output.loc[
+                (row['expiration_date'] == df_output['expiration_date']) &
+                (row['net_premium_adj_apr'] >= df_output["net_premium_adj_apr"]) &
+                (row['strike'] >= df_output["strike"]) &
+                # Needs to be the same symbol
+                (row['symbol'] == df_output['symbol']) &
+                # Don't check itself
+                (rowi != df_output.index),
+                'worse_apr_strike'] = rowi
+
+            # For a fixed strike price, an option with both a great premium / contract and a sooner expiry date is
+            # objectively better
+            df_output.loc[
+                (row['expiration_date'] <= df_output['expiration_date']) &
+                (row['net_premium'] >= df_output["net_premium"]) &
+                (row['strike'] == df_output["strike"]) &
+                # Needs to be the same symbol
+                (row['symbol'] == df_output['symbol']) &
+                # Don't check itself
+                (rowi != df_output.index),
+                'worse_premium_expiry'] = rowi
+
+            # For a fixed APR, an option with a sooner expiry date and a >= strike price is objectively better
+
+        return df_output
