@@ -11,6 +11,7 @@ from coverme.version import __version__
 import json
 import shutil
 from typing import Callable
+import pandas as pd
 
 
 template = {
@@ -20,19 +21,6 @@ template = {
     "use_cache": bool,
 }
 
-class LogLayout:
-    def __init__(self, root: pathlib.Path):
-        self.root = root
-        self.cache = CacheLayout(root / "cache")
-
-
-class CacheLayout:
-    def __init__(self, root: pathlib.Path):
-        self.root = root
-
-    @property
-    def quotes(self) -> pathlib.Path:
-        return self.root / "quotes"
 
 class Cache:
     def __init__(self, src_root: pathlib.Path, dst_root: pathlib.Path, use_cache=True):
@@ -44,6 +32,13 @@ class Cache:
 
 
     def load(self, name: str, miss_callback: Callable, params: tuple) -> object:
+        """
+        Attempt to load from cache. On a miss load direct. Updates statistics based upon hit/miss
+        :param name: The name of the service. Used as part 1/2 of a hash for future cache loads
+        :param miss_callback: The callback to call on a cache miss to load directly
+        :param params: The parameters to the callback. Used as part 2/2 of a hash for future cache loads.
+        :return: The loaded data
+        """
         dst_folder = self.dst_root / name
         dst_folder.mkdir(parents=True, exist_ok=True)
 
@@ -63,7 +58,7 @@ class Cache:
                 json.dump(result, f)
             self.misses += 1
 
-        # Load from the now-populated cache
+        # Always load from the now-populated cache to minimize testable code paths
         with dst_filename.open('r') as f:
             return json.load(f)
 
@@ -114,15 +109,31 @@ def main(argv):
 
     logger.info(f"Cache: {cache.hits} hits, {cache.misses} misses")
 
-    # Load option chains
+    # Make a big ass table
 
-    print(market_api.quote('AAPL'))
-    print(market_api.quote('CHAP'))
-    expirations = market_api.options_expirations('CHAP')
-    print(expirations)
-    for expiration in expirations["expirations"]["date"]:
-        option = market_api.option_chain('CHAP', expiration)
-        print(option)
+    # But start with the quotes table
+    last_prices = [quotes[symbol]['quotes']['quote']['last'] for symbol in symbols]
+    df_quote = pd.DataFrame({
+        'symbol': symbols,
+        'last': last_prices
+    })
+
+    # Then the option chains table
+    to_grab = ["underlying", "ask", "asksize", "bid", "bidsize", "last", "strike", "expiration_date"]
+    table = {x: [] for x in to_grab}
+    for option_chain in option_chains.values():
+        for expiration_chain in option_chain.values():
+            for contract in expiration_chain['options']['option']:
+                # Only tracking calls
+                if contract['option_type'] == "put":
+                    continue
+                for key in to_grab:
+                    table[key].append(contract[key])
+    df_options_chain = pd.DataFrame(table)
+
+    foo = 1
+
+
 
 
 def open_session(api_key: str) -> requests.Session:
@@ -165,17 +176,3 @@ class TradierApi:
             return response.json()
         else:
             raise IOError(f"Bad response: {response.text}")
-
-
-
-
-#
-# symbol = "CHAP"
-#
-# url = 'https://sandbox.tradier.com/v1/markets/options/expirations'
-# params = {'symbol': symbol}
-# r = session.get(url, params=params)
-#
-# url = 'https://api.tradier.com/v1/markets/options/chains'
-# params = {'symbol': symbol, 'expiration': expiration}
-# r = session.get(url, params=params)
