@@ -2,37 +2,59 @@ import requests
 from requests.adapters import HTTPAdapter
 
 import argparse
-from coverme.log_folder import LogFolder
 import pathlib
 from coverme.config import coverme_config
 from loguru import logger
 from coverme import definitions
 from coverme import conguru
 from coverme.version import __version__
+import json
 
 
-template = {}
+template = {
+    # The name of this configuration (for logging purposes)
+    'name': str,
+    # True to use cache instead of the servers
+    "use_cache": bool,
+}
 
 def main(argv):
     parser = argparse.ArgumentParser(description="Tool for covered calls")
-    parser.add_argument('--config', '-c', help='App config.', type=str,
-                        default=str(definitions.CONFIG_DIR / "config.yml"))
+    conguru.add_argument(parser, definitions.CONFIG_DIR / "config.yml")
     parser.add_argument("--cache", dest="use_cache", action="store_true",
                         help="Force to use locally cached data")
     args = parser.parse_args(argv)
 
+    # Conguru -- parse config and setup logging
+    conguru.init(args, argv, coverme_config, template, definitions.LOG_DIR, __version__)
 
-    # Conguru
-    conguru.conguru_init(args, argv, coverme_config, template, definitions.LOG_DIR, __version__)
-
-    # Read config
+    # Setup the session
     session = open_session(
         coverme_config['tradier']['key'].get()
     )
     base_url = coverme_config['tradier']['base_url'].get()
     market_api = TradierApi(session, base_url)
 
+    # Load the symbols
+
+    # Cache miss
     symbols = coverme_config['symbols'].get()
+    cache_folder = conguru.LogFolder.folder / "cache"
+    quote_folder = cache_folder / "quotes"
+
+    # Populate cache
+    if not coverme_config['use_cache'].get():
+        quote_folder.mkdir(parents=True, exist_ok=True)
+        for symbol in symbols:
+            quote = market_api.quote(symbol)
+            with (quote_folder / f"{symbol}.json").open('w') as f:
+                json.dump(quote, f)
+
+    # Load from cache
+    quotes = {}
+    for symbol in symbols:
+        with (quote_folder / f"{symbol}.json").open('r') as f:
+            quotes[symbol] = json.load(f)
 
     print(market_api.quote('AAPL'))
     print(market_api.quote('CHAP'))

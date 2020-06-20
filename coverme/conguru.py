@@ -3,9 +3,15 @@ from loguru import logger
 import pathlib
 from .log_folder import LogFolder
 import shutil
+import argparse
 
 
-def conguru_init(args, argv, config: confuse.Configuration, template: dict, log_dir: pathlib.Path, version: str):
+def add_argument(parser: argparse.ArgumentParser, default_config_filename: pathlib.Path):
+    parser.add_argument('--config', '-c', help='App config.', type=str,
+                        default=str(default_config_filename))
+
+
+def init(args, argv, config: confuse.Configuration, template: dict, log_dir: pathlib.Path, version: str):
     """
     Setup logging and configuration. Uses confuse for config. Uses loguru to save to disk. Saves all resulting config
     to disk. Creates a log folder based upon current timestamp
