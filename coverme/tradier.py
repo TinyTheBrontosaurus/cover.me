@@ -12,6 +12,7 @@ import json
 import shutil
 from typing import Callable
 import pandas as pd
+import datetime
 
 
 template = {
@@ -113,9 +114,11 @@ def main(argv):
 
     # But start with the quotes table
     last_prices = [quotes[symbol]['quotes']['quote']['last'] for symbol in symbols]
+    today = datetime.date.today()
     df_quote = pd.DataFrame({
         'symbol': symbols,
-        'last': last_prices
+        'last': last_prices,
+        'today': [today for _ in symbols]
     })
 
     # Then the option chains table
@@ -128,8 +131,27 @@ def main(argv):
                 if contract['option_type'] == "put":
                     continue
                 for key in to_grab:
+                    if key == "expiration_date":
+                        contract[key] = datetime.date.fromisoformat(contract[key])
                     table[key].append(contract[key])
     df_options_chain = pd.DataFrame(table)
+
+    # Create the APR analysis table
+    df_apr = pd.merge(df_options_chain, df_quote, left_on="underlying", right_on="symbol",
+                      suffixes=("_option", "_stock"))
+
+    # "Ask %" is the minimum proceeds based upon the premium and the current stock price. Ignores movement of stock
+    df_apr["bid_pct"] = df_apr["bid"] / df_apr["last_stock"]
+    # "Max %" is the maximum proceeds assuming the stock exceeds the strike price. Considers the strike price
+    # plus the premium as compared to the current stock price
+    df_apr["max_pct"] = (df_apr["strike"] + df_apr["bid"] - df_apr["last_stock"]) / df_apr["last_stock"]
+    # Filter out any ones with an overly low strike price
+    df_apr["bid_adj_pct"] = df_apr[['bid_pct','max_pct']].min(axis=1)
+
+    df_apr["commit_days"] = df_apr["expiration_date"] - df_apr['today']
+
+    df_apr["bid_adj_apr"] = df_apr['bid_adj_pct'] * 365 / df_apr["commit_days"].dt.days
+    df_apr["max_apr"] = df_apr['max_pct'] * 365 / df_apr["commit_days"].dt.days
 
     foo = 1
 
