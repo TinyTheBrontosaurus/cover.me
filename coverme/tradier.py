@@ -10,6 +10,7 @@ from coverme import conguru
 from coverme.version import __version__
 import json
 import shutil
+from typing import Callable
 
 
 template = {
@@ -33,6 +34,39 @@ class CacheLayout:
     def quotes(self) -> pathlib.Path:
         return self.root / "quotes"
 
+class Cache:
+    def __init__(self, src_root: pathlib.Path, dst_root: pathlib.Path, use_cache=True):
+        self.src_root = src_root
+        self.dst_root = dst_root
+        self.hits = 0
+        self.misses = 0
+        self.use_cache = use_cache
+
+
+    def load(self, name: str, miss_callback: Callable, params: tuple) -> object:
+        dst_folder = self.dst_root / name
+        dst_folder.mkdir(parents=True, exist_ok=True)
+
+        # Populate cache, either from the last run (cache hit) or from the servers (cache miss)
+        src_folder = self.src_root / name
+
+        src_filename = src_folder / f"{params}.json"
+        dst_filename = dst_folder / f"{params}.json"
+        if self.use_cache and src_filename.is_file():
+            # Cache hit!
+            shutil.copy(str(src_filename), str(dst_filename))
+            self.hits += 1
+        else:
+            # Cache miss -- hit the server
+            result = miss_callback(*params)
+            with dst_filename.open('w') as f:
+                json.dump(result, f)
+            self.misses += 1
+
+        # Load from the now-populated cache
+        with dst_filename.open('r') as f:
+            return json.load(f)
+
 
 def main(argv):
     parser = argparse.ArgumentParser(description="Tool for covered calls")
@@ -51,39 +85,26 @@ def main(argv):
     base_url = coverme_config['tradier']['base_url'].get()
     market_api = TradierApi(session, base_url)
 
-    # Load the symbols
-
-    # Cache miss
-    symbols = coverme_config['symbols'].get()
-    dest_cache_layout = LogLayout(conguru.LogFolder.folder).cache
-    dest_cache_layout.quotes.mkdir(parents=True, exist_ok=True)
-
-    # Populate cache, either from the last run (cache hit) or from the servers (cache miss)
     use_cache = coverme_config['use_cache'].get()
-    src_cache_layout = LogLayout(conguru.LogFolder.latest_log_folder).cache
-    hits = 0
-    misses = 0
-    for symbol in symbols:
-        src_filename = src_cache_layout.quotes / f"{symbol}.json"
-        dst_filename = dest_cache_layout.quotes / f"{symbol}.json"
-        if use_cache and src_filename.is_file():
-            # Cache hit!
-            shutil.copy(str(src_filename), str(dst_filename))
-            hits += 1
-        else:
-            # Cache miss -- hit the server
-            quote = market_api.quote(symbol)
-            with dst_filename.open('w') as f:
-                json.dump(quote, f)
-            misses += 1
-    logger.info(f"Cache: {hits} hits, {misses} misses")
+    cache = Cache(src_root=conguru.LogFolder.latest_log_folder / "cache",
+                  dst_root=conguru.LogFolder.folder / "cache",
+                  use_cache=use_cache)
 
-    # Load from the now-populated cache
-    quotes = {}
-    for symbol in symbols:
-        dst_filename = dest_cache_layout.quotes / f"{symbol}.json"
-        with dst_filename.open('r') as f:
-            quotes[symbol] = json.load(f)
+    # Load the symbols' quotes
+    symbols = coverme_config['symbols'].get()
+    quotes = {
+        symbol: cache.load("quotes", market_api.quote, (symbol,))
+        for symbol in symbols
+    }
+
+    # Load expirations
+    expirations = {
+        symbol: cache.load("expiration", market_api.options_expirations, (symbol,))
+        for symbol in symbols
+    }
+    logger.info(f"Cache: {cache.hits} hits, {cache.misses} misses")
+
+    # Load option chains
 
     print(market_api.quote('AAPL'))
     print(market_api.quote('CHAP'))
