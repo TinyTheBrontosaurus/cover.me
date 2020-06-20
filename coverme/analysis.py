@@ -83,7 +83,7 @@ class Analysis:
 
         # A number that converts from an instantaneous ratio to a APR based upon the commitment
         # (and to percentage units)
-        df_apr["ratio_to_apr"] = DAYS_PER_YEAR / df_apr["commit_days"].dt.days * TO_PERCENT
+        df_apr["ratio_to_apr"] = DAYS_PER_YEAR / df_apr["commitment_period"].dt.days * TO_PERCENT
 
         # Calculate each of the above as a ratio of the last stock--effectively normalizing high- and low-priced stocks
         # with each other
@@ -93,7 +93,7 @@ class Analysis:
 
         # Convert the ratio units to an apr (a proper percentage now)
         df_apr["net_premium_adj_apr"] = df_apr['net_premium_adj_ratio'] * df_apr["ratio_to_apr"]
-        df_apr["max_proceeds_apr"] = df_apr['max_pct'] * df_apr["ratio_to_apr"]
+        df_apr["max_proceeds_apr"] = df_apr['max_proceeds_ratio'] * df_apr["ratio_to_apr"]
 
         # Convert to a per-contract value
         # "How much cash-money is received as premium"

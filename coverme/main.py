@@ -7,7 +7,7 @@ import tabulate
 
 from . import definitions
 from . import conguru
-from . .version import __version__
+from .version import __version__
 from .analysis import Analysis
 from .cache import Cache
 from .config import coverme_config
@@ -72,6 +72,7 @@ def main(argv):
     # Convert to data frames (and setup metrics)
     anaysis = Analysis(quotes, expirations, option_chains)
 
+    # Print
     df_output = anaysis.df_apr[["symbol", "net_premium_adj_apr", "net_premium_per_contract",
                                 "commitment_value_per_contract", "commitment_period",
                                 "bid", "last_stock", "strike", "expiration_date"
