@@ -13,6 +13,7 @@ import shutil
 from typing import Callable
 import pandas as pd
 import datetime
+import tabulate
 
 
 template = {
@@ -140,22 +141,43 @@ def main(argv):
     df_apr = pd.merge(df_options_chain, df_quote, left_on="underlying", right_on="symbol",
                       suffixes=("_option", "_stock"))
 
+    DAYS_PER_YEAR = 365
+    SHARES_PER_CONTRACT = 100
+    TO_PERCENT = 100
+    FEE_PER_CONTRACT = 0.65
+
     # "Ask %" is the minimum proceeds based upon the premium and the current stock price. Ignores movement of stock
     df_apr["bid_pct"] = df_apr["bid"] / df_apr["last_stock"]
+    df_apr["net_premium_pct"] = (df_apr["bid"] - FEE_PER_CONTRACT/SHARES_PER_CONTRACT) / df_apr["last_stock"]
     # "Max %" is the maximum proceeds assuming the stock exceeds the strike price. Considers the strike price
     # plus the premium as compared to the current stock price
-    df_apr["max_pct"] = (df_apr["strike"] + df_apr["bid"] - df_apr["last_stock"]) / df_apr["last_stock"]
+    df_apr["max_pct"] = (df_apr["strike"] + df_apr["bid"] - df_apr["last_stock"] -
+                         (FEE_PER_CONTRACT / SHARES_PER_CONTRACT)) / \
+                        df_apr["last_stock"]
     # Filter out any ones with an overly low strike price
-    df_apr["bid_adj_pct"] = df_apr[['bid_pct','max_pct']].min(axis=1)
+    df_apr["net_premium_adj_pct"] = df_apr[['net_premium_pct','max_pct']].min(axis=1)
 
     df_apr["commit_days"] = df_apr["expiration_date"] - df_apr['today']
 
-    df_apr["bid_adj_apr"] = df_apr['bid_adj_pct'] * 365 / df_apr["commit_days"].dt.days
-    df_apr["max_apr"] = df_apr['max_pct'] * 365 / df_apr["commit_days"].dt.days
+    df_apr["net_premium_adj_apr"] = df_apr['net_premium_adj_pct'] * DAYS_PER_YEAR / df_apr["commit_days"].dt.days
+    df_apr["max_apr"] = df_apr['max_pct'] * DAYS_PER_YEAR / df_apr["commit_days"].dt.days
 
-    foo = 1
+    df_apr["net_premium_per_contract"] = df_apr["bid"] * SHARES_PER_CONTRACT - FEE_PER_CONTRACT
+    df_apr["share_value_per_contract"] = df_apr["last_stock"] * SHARES_PER_CONTRACT
 
+    # Convert to a percentage
+    df_apr["apr"] = df_apr["net_premium_adj_apr"] * TO_PERCENT
+    df_apr["premium_pct"] = df_apr["net_premium_adj_pct"] * TO_PERCENT
 
+    df_output = df_apr[["symbol", "apr", "net_premium_per_contract", "share_value_per_contract",
+                        "commit_days", "premium_pct",
+                        "bid", "last_stock", "strike", "expiration_date"]].sort_values('apr', ascending=False)
+
+    for symbol in symbols:
+        where = (df_output["symbol"] == symbol)
+        print(tabulate.tabulate(df_output[where], headers='keys', tablefmt='psql'))
+
+    print(tabulate.tabulate(df_output, headers='keys', tablefmt='psql'))
 
 
 def open_session(api_key: str) -> requests.Session:
