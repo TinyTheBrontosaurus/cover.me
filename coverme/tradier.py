@@ -9,6 +9,7 @@ from coverme import definitions
 from coverme import conguru
 from coverme.version import __version__
 import json
+import shutil
 
 
 template = {
@@ -17,6 +18,21 @@ template = {
     # True to use cache instead of the servers
     "use_cache": bool,
 }
+
+class LogLayout:
+    def __init__(self, root: pathlib.Path):
+        self.root = root
+        self.cache = CacheLayout(root / "cache")
+
+
+class CacheLayout:
+    def __init__(self, root: pathlib.Path):
+        self.root = root
+
+    @property
+    def quotes(self) -> pathlib.Path:
+        return self.root / "quotes"
+
 
 def main(argv):
     parser = argparse.ArgumentParser(description="Tool for covered calls")
@@ -39,21 +55,34 @@ def main(argv):
 
     # Cache miss
     symbols = coverme_config['symbols'].get()
-    cache_folder = conguru.LogFolder.folder / "cache"
-    quote_folder = cache_folder / "quotes"
+    dest_cache_layout = LogLayout(conguru.LogFolder.folder).cache
+    dest_cache_layout.quotes.mkdir(parents=True, exist_ok=True)
 
-    # Populate cache
-    if not coverme_config['use_cache'].get():
-        quote_folder.mkdir(parents=True, exist_ok=True)
-        for symbol in symbols:
+    # Populate cache, either from the last run (cache hit) or from the servers (cache miss)
+    use_cache = coverme_config['use_cache'].get()
+    src_cache_layout = LogLayout(conguru.LogFolder.latest_log_folder).cache
+    hits = 0
+    misses = 0
+    for symbol in symbols:
+        src_filename = src_cache_layout.quotes / f"{symbol}.json"
+        dst_filename = dest_cache_layout.quotes / f"{symbol}.json"
+        if use_cache and src_filename.is_file():
+            # Cache hit!
+            shutil.copy(str(src_filename), str(dst_filename))
+            hits += 1
+        else:
+            # Cache miss -- hit the server
             quote = market_api.quote(symbol)
-            with (quote_folder / f"{symbol}.json").open('w') as f:
+            with dst_filename.open('w') as f:
                 json.dump(quote, f)
+            misses += 1
+    logger.info(f"Cache: {hits} hits, {misses} misses")
 
-    # Load from cache
+    # Load from the now-populated cache
     quotes = {}
     for symbol in symbols:
-        with (quote_folder / f"{symbol}.json").open('r') as f:
+        dst_filename = dest_cache_layout.quotes / f"{symbol}.json"
+        with dst_filename.open('r') as f:
             quotes[symbol] = json.load(f)
 
     print(market_api.quote('AAPL'))

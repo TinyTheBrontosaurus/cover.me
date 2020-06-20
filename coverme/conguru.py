@@ -41,6 +41,7 @@ def init(args, argv, config: confuse.Configuration, template: dict, log_dir: pat
     # Cache old log path
     log_name = config['name'].get()
 
+    # Get the "latest" log folder, before a new one is created
     try:
         LogFolder.get_latest_log_folder(log_dir / log_name)
     except FileNotFoundError:
@@ -56,7 +57,7 @@ def init(args, argv, config: confuse.Configuration, template: dict, log_dir: pat
     logger.info("Log folder: {}", LogFolder.folder)
 
     # Don't lost to stderr anymore
-    logger.remove(0)
+    #logger.remove(0)
 
     # Copy configs
     # Straight copy
