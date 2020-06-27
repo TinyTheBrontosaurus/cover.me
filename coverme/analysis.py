@@ -76,6 +76,8 @@ class Analysis:
         # option is exercised. Includes the premium and the fee
         df_apr["max_proceeds"] = df_apr["strike"] - df_apr["last_stock"] + df_apr["net_premium"]
 
+        # The break-even price. The price at which the stock needs to cost at expiration if the option was written
+        # at the current share price to make exactly $0.00
         df_apr["breakeven_price"] = df_apr["strike"] + df_apr["net_premium"] - FEE_PER_SHARE
 
         # Filter out any net premiums do not exceed max proceeds. Likely from an overly low strike price combined with
