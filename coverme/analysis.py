@@ -18,7 +18,9 @@ class Analysis:
         self.quotes = quotes
         self.expirations = expirations
         self.option_chains = option_chains
-        self.today = datetime.date.today()
+        # The calculations should assume "tomorrow" to avoid
+        # divide by zero errors when is expiry is truly today.
+        self.today = datetime.date.today() + datetime.timedelta(days=1)
 
     @property
     def df_quotes(self) -> pd.DataFrame:
@@ -73,6 +75,8 @@ class Analysis:
         # "Max proceeds" is the most one can make, per share, considering the stock exceeds the strike price and the
         # option is exercised. Includes the premium and the fee
         df_apr["max_proceeds"] = df_apr["strike"] - df_apr["last_stock"] + df_apr["net_premium"]
+
+        df_apr["breakeven_price"] = df_apr["strike"] + df_apr["net_premium"] - FEE_PER_SHARE
 
         # Filter out any net premiums do not exceed max proceeds. Likely from an overly low strike price combined with
         # a low premium.

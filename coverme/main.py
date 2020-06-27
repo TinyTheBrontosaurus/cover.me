@@ -77,7 +77,7 @@ def main(argv):
     df_output = df_apr[
         ["symbol", "net_premium_adj_apr", "net_premium_per_contract",
          "commitment_value_per_contract", "commitment_period",
-         "bid", "last_stock", "strike", "expiration_date",
+         "bid", "last_stock", "strike", "breakeven_price", "expiration_date",
         ]].sort_values('net_premium_adj_apr', ascending=False)
     def omitter(row):
         filtered = row.values[row.values != np.array(None)]
@@ -110,6 +110,7 @@ def main(argv):
     df_output['bid'] = df_output['bid'].map(lambda x: f"${x:.2f}")
     df_output['last_stock'] = df_output['last_stock'].map(lambda x: f"${x:.2f}")
     df_output['strike'] = df_output['strike'].map(lambda x: f"${x:.2f}")
+    df_output['breakeven_price'] = df_output['breakeven_price'].map(lambda x: f"${x:.2f}")
 
     # Rename for printing
     df_output = df_output.rename(columns={'net_premium_adj_apr': "APR",
@@ -118,7 +119,8 @@ def main(argv):
                                           "commitment_period": "Expiry\nperiod",
                                           "last_stock": "Stock\nprice",
                                           "strike": "Strike\nprice",
-                                          "expiration_date": "Expiry"
+                                          "expiration_date": "Expiry",
+                                          "breakeven_price": "Break-even\nprice"
                                           })
 
     # Print itemized by symbols
