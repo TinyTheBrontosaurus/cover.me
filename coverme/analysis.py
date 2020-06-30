@@ -20,7 +20,7 @@ class Analysis:
         self.option_chains = option_chains
         # The calculations should assume "tomorrow" to avoid
         # divide by zero errors when is expiry is truly today.
-        self.today = datetime.date.today() + datetime.timedelta(days=1)
+        self.today = datetime.date.today() - datetime.timedelta(days=1)
 
     @property
     def df_quotes(self) -> pd.DataFrame:
