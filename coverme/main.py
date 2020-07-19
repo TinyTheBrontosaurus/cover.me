@@ -1,4 +1,5 @@
 import argparse
+import datetime
 
 from loguru import logger
 import numpy as np
@@ -77,7 +78,8 @@ def main(argv):
     df_output = df_apr[
         ["symbol", "net_premium_adj_apr", "net_premium_per_contract",
          "commitment_value_per_contract", "commitment_period",
-         "bid", "last_stock", "strike", "breakeven_price", "net_premium_adj_ratio", "expiration_date",
+         "bid", "last_stock", "strike", "breakeven_price", "net_premium_adj_ratio", "stock_to_strike_ratio",
+         "expiration_date",
         ]].sort_values('net_premium_adj_apr', ascending=False)
     def omitter(row):
         filtered = row.values[row.values != np.array(None)]
@@ -103,6 +105,10 @@ def main(argv):
     df_output = df_output[df_output['breakeven_price'] > df_output["last_stock"]]
     # Remove anything marked to omit
     df_output = df_output[df_output["omit"] == '']
+    # Remove anything with too long of a horizon
+    df_output = df_output[df_output['commitment_period'] < datetime.timedelta(7)]
+    # Remove strike prices below the current stock price
+    df_output = df_output[df_output['strike'] > df_output['last_stock']]
 
     # Fix units for printing
     df_output['net_premium_adj_apr'] = df_output['net_premium_adj_apr'].map(lambda x: f"{x:>5.1f}%")
@@ -113,6 +119,7 @@ def main(argv):
     df_output['last_stock'] = df_output['last_stock'].map(lambda x: f"${x:.2f}")
     df_output['strike'] = df_output['strike'].map(lambda x: f"${x:.2f}")
     df_output['breakeven_price'] = df_output['breakeven_price'].map(lambda x: f"${x:.2f}")
+    df_output["stock_to_strike_ratio"] = df_output['stock_to_strike_ratio'].map(lambda x: f"{x * 100:5.1f}%")
     df_output['net_premium_adj_ratio'] = df_output['net_premium_adj_ratio'].map(lambda x: f"{x * 100:5.1f}%")
 
     # Rename for printing
@@ -124,12 +131,16 @@ def main(argv):
                                           "strike": "Strike\nprice",
                                           "expiration_date": "Expiry",
                                           "breakeven_price": "Break-even\nprice",
+                                          "stock_to_strike_ratio": "% to strike",
                                           "net_premium_adj_ratio": "Premium %",
                                           })
 
     # Print itemized by symbols
     for symbol in symbols:
         where = (df_output["symbol"] == symbol)
+        if len(df_output[where]) == 0:
+            print(f"Skipping {symbol}")
+            continue
         print(tabulate.tabulate(df_output[where],
                                 headers='keys', tablefmt='psql', colalign=("right",) * len(df_output.columns)))
 

@@ -40,7 +40,7 @@ class Analysis:
     @property
     def df_options_chain(self):
         """
-        Conver the options chain to a dataframe. Only grab a subset and only grab calls
+        Convert the options chain to a dataframe. Only grab a subset and only grab calls
         :return: Options chain as a dataframe
         """
 
@@ -75,6 +75,9 @@ class Analysis:
         # "Max proceeds" is the most one can make, per share, considering the stock exceeds the strike price and the
         # option is exercised. Includes the premium and the fee
         df_apr["max_proceeds"] = df_apr["strike"] - df_apr["last_stock"] + df_apr["net_premium"]
+
+        # Calculate how much the stock has to go up to hit the strike price
+        df_apr["stock_to_strike_ratio"] = (df_apr["strike"] - df_apr["last_stock"]) / df_apr["last_stock"]
 
         # The break-even price. The price at which the stock needs to cost at expiration if the option was written
         # at the current share price to make exactly $0.00
