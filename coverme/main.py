@@ -79,8 +79,17 @@ def main(argv):
         ["symbol", "net_premium_adj_apr", "net_premium_per_contract",
          "commitment_value_per_contract", "commitment_period",
          "bid", "last_stock", "strike", "breakeven_price", "net_premium_adj_ratio", "stock_to_strike_ratio",
+         "harmonic_ratio",
          "expiration_date",
-        ]].sort_values('net_premium_adj_apr', ascending=False)
+        ]]
+
+    # Sort by Premium %
+    if False:
+        df_output = df_output.sort_values('net_premium_adj_apr', ascending=False)
+    else:
+        # Sort by harmonic %
+        df_output = df_output.sort_values('harmonic_ratio', ascending=False)
+
     def omitter(row):
         filtered = row.values[row.values != np.array(None)]
         filtered = np.unique(filtered).tolist()
@@ -106,7 +115,7 @@ def main(argv):
     # Remove anything marked to omit
     df_output = df_output[df_output["omit"] == '']
     # Remove anything with too long of a horizon
-    df_output = df_output[df_output['commitment_period'] < datetime.timedelta(7)]
+    df_output = df_output[df_output['commitment_period'] <= datetime.timedelta(7)]
     # Remove strike prices below the current stock price
     df_output = df_output[df_output['strike'] > df_output['last_stock']]
 
@@ -121,6 +130,7 @@ def main(argv):
     df_output['breakeven_price'] = df_output['breakeven_price'].map(lambda x: f"${x:.2f}")
     df_output["stock_to_strike_ratio"] = df_output['stock_to_strike_ratio'].map(lambda x: f"{x * 100:5.1f}%")
     df_output['net_premium_adj_ratio'] = df_output['net_premium_adj_ratio'].map(lambda x: f"{x * 100:5.1f}%")
+    df_output['harmonic_ratio'] = df_output['harmonic_ratio'].map(lambda x: f"{x * 100:5.1f}%")
 
     # Rename for printing
     df_output = df_output.rename(columns={'net_premium_adj_apr': "APR",
@@ -133,6 +143,7 @@ def main(argv):
                                           "breakeven_price": "Break-even\nprice",
                                           "stock_to_strike_ratio": "% to strike",
                                           "net_premium_adj_ratio": "Premium %",
+                                          "harmonic_ratio": "Harmonic %",
                                           })
 
     # Print itemized by symbols

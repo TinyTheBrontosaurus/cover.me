@@ -12,6 +12,13 @@ DAYS_PER_YEAR = 365
 TO_PERCENT = 100
 
 
+def harmonic(x, y):
+    """
+    Harmonic mean of two numbers
+    """
+    return 2 * (x * y) / (x + y)
+
+
 class Analysis:
     def __init__(self, quotes: dict, expirations: dict, option_chains: dict):
         self.symbols = list(quotes.keys())
@@ -99,6 +106,9 @@ class Analysis:
         df_apr["net_premium_ratio"] = df_apr["net_premium"] / df_apr["last_stock"]
         df_apr["max_proceeds_ratio"] = df_apr["max_proceeds"] / df_apr["last_stock"]
         df_apr["net_premium_adj_ratio"] = df_apr["net_premium_adj"] / df_apr["last_stock"]
+
+        # Harmonic mean of stock-to-strike (how far to ITM) and premium
+        df_apr["harmonic_ratio"] = harmonic(df_apr['net_premium_adj_ratio'], df_apr['stock_to_strike_ratio'])
 
         # Convert the ratio units to an apr (a proper percentage now)
         df_apr["net_premium_adj_apr"] = df_apr['net_premium_adj_ratio'] * df_apr["ratio_to_apr"]
