@@ -5,3 +5,5 @@ coverme/config.yml
 
 *.pyc
 __pycache__
+
+logs
