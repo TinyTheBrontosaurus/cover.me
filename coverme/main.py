@@ -71,6 +71,7 @@ def main(argv):
 
     # Convert to data frames (and setup metrics)
     anaysis = Analysis(quotes, expirations, option_chains)
+    anaysis.set_time_horizon(datetime.timedelta(days=7))
 
     # Print
     # Filter and order columns for printing
@@ -114,8 +115,6 @@ def main(argv):
     df_output = df_output[df_output['breakeven_price'] > df_output["last_stock"]]
     # Remove anything marked to omit
     df_output = df_output[df_output["omit"] == '']
-    # Remove anything with too long of a horizon
-    df_output = df_output[df_output['commitment_period'] <= datetime.timedelta(7)]
     # Remove strike prices below the current stock price
     df_output = df_output[df_output['strike'] > df_output['last_stock']]
 

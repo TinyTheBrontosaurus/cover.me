@@ -25,9 +25,14 @@ class Analysis:
         self.quotes = quotes
         self.expirations = expirations
         self.option_chains = option_chains
-        # The calculations should assume "tomorrow" to avoid
-        # divide by zero errors when is expiry is truly today.
+        # The calculations should assume "yesterday" to avoid
+        # divide by zero errors when it's expiry is truly today.
         self.today = datetime.date.today() - datetime.timedelta(days=1)
+        # The last day to keep
+        self._date_horizon: datetime.date = None
+
+    def set_time_horizon(self, time_horizon: datetime.timedelta):
+        self._date_horizon = self.today + time_horizon + datetime.timedelta(days=1)
 
     @property
     def df_quotes(self) -> pd.DataFrame:
@@ -35,8 +40,6 @@ class Analysis:
         Convert the quotes structure to a table
         :return: Quotes as a dataframe
         """
-
-
         last_prices = [self.quotes[symbol]['quotes']['quote']['last'] for symbol in self.symbols]
         return pd.DataFrame({
             'symbol': self.symbols,
@@ -64,7 +67,10 @@ class Analysis:
                         if key == "expiration_date":
                             contract[key] = datetime.date.fromisoformat(contract[key])
                         table[key].append(contract[key])
-        return pd.DataFrame(table)
+
+        # Convert to a dataframe, then omit anything outside the time horizon
+        df = pd.DataFrame(table)
+        return df if self._date_horizon is None else df[df['expiration_date'] <= self._date_horizon]
 
     @property
     def df_apr(self) -> pd.DataFrame:
