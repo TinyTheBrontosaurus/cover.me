@@ -73,17 +73,45 @@ def main(argv):
     anaysis = Analysis(quotes, expirations, option_chains)
     anaysis.set_time_horizon(datetime.timedelta(days=7))
 
-    # Print
+    # Grab the data
+    more_columns = []
+    if False:
+        # Slow filters -- These are O(n^2) filters
+        df_apr = anaysis.df_apr_objective_omit
+
+        def omitter(row):
+            filtered = row.values[row.values != np.array(None)]
+            filtered = np.unique(filtered).tolist()
+            if len(filtered) == 0:
+                return ''
+            else:
+                return ', '.join([str(x) for x in filtered])
+
+        df_apr['omit'] = df_apr[[
+            # Kept as separate lines to they are easy to add/remove
+            "worse_apr_strike",
+            "worse_premium_expiry",
+            "worse_strike_expiry",
+        ]].apply(
+            omitter,
+            axis=1
+        )
+        more_columns += "omit"
+
+    else:
+        # Quick filters
+        df_apr = anaysis.df_apr
+
     # Filter and order columns for printing
-    df_apr = anaysis.df_apr_objective_omit
     df_output = df_apr[
         ["symbol", "net_premium_adj_apr", "net_premium_per_contract",
          "commitment_value_per_contract", "commitment_period",
          "bid", "last_stock", "strike", "breakeven_price", "net_premium_adj_ratio", "stock_to_strike_ratio",
          "harmonic_ratio",
-         "expiration_date",
-        ]]
+         "expiration_date"
+        ] + more_columns]
 
+    # Sort for printing
     # Sort by Premium %
     if False:
         df_output = df_output.sort_values('net_premium_adj_apr', ascending=False)
@@ -91,30 +119,12 @@ def main(argv):
         # Sort by harmonic %
         df_output = df_output.sort_values('harmonic_ratio', ascending=False)
 
-    def omitter(row):
-        filtered = row.values[row.values != np.array(None)]
-        filtered = np.unique(filtered).tolist()
-        if len(filtered) == 0:
-            return ''
-        else:
-            return ', '.join([str(x) for x in filtered])
-
-    df_output['omit'] = df_apr[[
-        # Kept as separate lines to they are easy to add/remove
-        "worse_apr_strike",
-        "worse_premium_expiry",
-        #"worse_strike_expiry",
-    ]].apply(
-        omitter,
-        axis=1
-    )
-
     # Remove anything with an APR under 7%
     df_output = df_output[df_output["net_premium_adj_apr"] > 7]
     # Remove anything where there's no way to make money
     df_output = df_output[df_output['breakeven_price'] > df_output["last_stock"]]
     # Remove anything marked to omit
-    df_output = df_output[df_output["omit"] == '']
+    #df_output = df_output[df_output["omit"] == '']
     # Remove strike prices below the current stock price
     df_output = df_output[df_output['strike'] > df_output['last_stock']]
 
